@@ -1,0 +1,42 @@
+fullnameOverride: spring-app
+replicaCount: 2
+revisionHistoryLimit: 5
+
+image:
+  repository: ghcr.io/sunweisheng/spring-app
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - ghcr-pull-config
+
+container:
+  name: app
+  port: 8080
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: traefik
+  host: app.k8s.lab
+  tlsSecret: k8s-lab-tls
+
+runtime:
+  springProfile: k8s
+  javaToolOptions: -Duser.timezone=Asia/Shanghai
+  existingDatabaseSecret: app-db
+
+probes:
+  livenessPath: /actuator/health/liveness
+  readinessPath: /actuator/health/readiness
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 384Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

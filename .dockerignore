@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+.vscode
+ci
+deploy
+src
+*.md
+target/*
+!target/app.jar

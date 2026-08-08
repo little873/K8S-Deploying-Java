@@ -1,0 +1,11 @@
+{{- $name := required "fullnameOverride is required" .Values.fullnameOverride -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-runtime
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+  SPRING_PROFILES_ACTIVE: {{ .Values.runtime.springProfile | quote }}
+  JAVA_TOOL_OPTIONS: {{ .Values.runtime.javaToolOptions | quote }}

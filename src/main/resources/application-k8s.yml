@@ -1,0 +1,9 @@
+spring:
+  config:
+    activate:
+      on-profile: k8s
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  forward-headers-strategy: framework
