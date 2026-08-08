@@ -25,6 +25,7 @@ spec:
       annotations:
         checksum/runtime: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
+      automountServiceAccountToken: false
       imagePullSecrets:
 {{- range .Values.imagePullSecrets }}
         - name: {{ . }}

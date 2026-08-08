@@ -23,5 +23,23 @@
   "agent": {
     "type": "kubernetes",
     "yamlFile": "ci/jenkins-agent.yaml"
-  }
+  },
+  "stages": [
+    {
+      "id": "image",
+      "condition": {
+        "variable": "BRANCH_NAME",
+        "operator": "equals",
+        "value": "main"
+      }
+    },
+    {
+      "id": "deploy",
+      "condition": {
+        "variable": "BRANCH_NAME",
+        "operator": "equals",
+        "value": "main"
+      }
+    }
+  ]
 }

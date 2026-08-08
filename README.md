@@ -48,6 +48,7 @@
 
 | 部分 | 技术或版本 |
 | --- | --- |
+| 项目版本 | 1.0.1 |
 | Java | OpenJDK 21 |
 | 应用框架 | Spring Boot 3.5.16 |
 | 构建工具 | Maven |
@@ -352,8 +353,9 @@ jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 6. Helm 使用该摘要安装或升级 `spring-app` Release。
 7. 构建结束后删除临时 Agent Pod。
 
-流水线依赖配套部署攻略中已经创建的：
+项目 JSON 只允许 `main` 分支执行镜像推送和 Helm 部署；Jenkins 页面仍应配置相同的分支过滤，避免创建无用途的功能分支任务。流水线依赖配套部署攻略中已经创建的：
 
+- 仅包含 `main` 分支的 Multibranch Pipeline 分支过滤规则
 - `jenkins-json-build@v3.1.1` 全局共享类库
 - `maven-settings` ConfigMap
 - `build-proxy` ConfigMap
@@ -390,12 +392,14 @@ helm template spring-app deploy/charts/spring-app \
 手工部署已经推送的镜像时：
 
 ```bash
-helm upgrade --install spring-app deploy/charts/spring-app \
+HELM_DRIVER=configmap helm upgrade --install spring-app deploy/charts/spring-app \
   --namespace spring-app \
   --set-string image.digest='sha256:替换为真实镜像摘要' \
   --wait \
   --timeout 5m
 ```
+
+应用 Release 由 Jenkins 使用 ConfigMap 保存发布记录，因此手工执行 `upgrade`、`history`、`status` 或 `rollback` 时也必须设置 `HELM_DRIVER=configmap`，不能与默认 Secret Driver 混用。
 
 ## 14. Kubernetes 验收
 
@@ -433,6 +437,7 @@ done
 - 数据库和 Registry 凭据只通过 Kubernetes Secret 注入。
 - BuildKit 不挂载 Docker Socket，也不使用特权容器。
 - 应用容器使用非 root 用户、只读根文件系统并删除 Linux capabilities。
+- 应用 Pod 不挂载默认 ServiceAccount Token，不访问 Kubernetes API。
 - 页面没有登录和权限控制，只适合受控实验网络。
 - 删除操作是真实数据库删除，不提供回收站。
 - H2 只用于自动化测试；实际运行和最终验收必须使用 PostgreSQL。
