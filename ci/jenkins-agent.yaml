@@ -29,21 +29,6 @@ spec:
           value: ${MAVEN_CONFIG}
         - name: MAVEN_OPTS
           value: -Duser.home=${MAVEN_USER_HOME} -Dmaven.repo.local=${MAVEN_REPOSITORY} -XX:MaxRAMPercentage=75.0
-        - name: HTTP_PROXY
-          valueFrom:
-            configMapKeyRef:
-              name: ${BUILD_PROXY_CONFIG_MAP}
-              key: HTTP_PROXY
-        - name: HTTPS_PROXY
-          valueFrom:
-            configMapKeyRef:
-              name: ${BUILD_PROXY_CONFIG_MAP}
-              key: HTTPS_PROXY
-        - name: NO_PROXY
-          valueFrom:
-            configMapKeyRef:
-              name: ${BUILD_PROXY_CONFIG_MAP}
-              key: NO_PROXY
       resources:
         requests:
           cpu: "${MAVEN_CPU_REQUEST}"
@@ -62,10 +47,6 @@ spec:
       volumeMounts:
         - name: maven-home
           mountPath: ${MAVEN_USER_HOME}
-        - name: maven-settings
-          mountPath: ${MAVEN_CONFIG}/settings.xml
-          subPath: settings.xml
-          readOnly: true
         - name: maven-cache
           mountPath: ${MAVEN_REPOSITORY}
 
@@ -163,9 +144,6 @@ spec:
   volumes:
     - name: maven-home
       emptyDir: {}
-    - name: maven-settings
-      configMap:
-        name: ${MAVEN_SETTINGS_CONFIG_MAP}
     - name: maven-cache
       emptyDir: {}
     - name: helm-home

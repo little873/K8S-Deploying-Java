@@ -34,7 +34,7 @@ class JenkinsAgentConfigurationTest {
     }
 
     @Test
-    void usesTheSharedLibraryV313AgentVariableContract() {
+    void usesTheSharedLibraryAgentVariableContract() {
         JsonNode variables = readConfiguration().path("variables");
         assertEquals(1000, variables.path("POD_RUN_AS_USER").asInt());
         assertEquals(1000, variables.path("POD_RUN_AS_GROUP").asInt());
@@ -43,6 +43,7 @@ class JenkinsAgentConfigurationTest {
         assertEquals("/home/jenkins/.m2", variables.path("MAVEN_CONFIG").asText());
         assertEquals("/home/jenkins/.m2/repository", variables.path("MAVEN_REPOSITORY").asText());
         assertEquals("/home/jenkins", variables.path("HELM_USER_HOME").asText());
+        assertFalse(variables.has("MAVEN_SETTINGS_CONFIG_MAP"));
         assertFalse(source.contains("AGENT_RUN_AS_"));
     }
 
@@ -56,9 +57,13 @@ class JenkinsAgentConfigurationTest {
                 "-Dmaven.repo.local=/home/jenkins/.m2/repository"
         ));
         assertEquals("/home/jenkins", mountPath(maven, "maven-home"));
-        assertEquals("/home/jenkins/.m2/settings.xml", mountPath(maven, "maven-settings"));
         assertEquals("/home/jenkins/.m2/repository", mountPath(maven, "maven-cache"));
         assertTrue(volume("maven-home").containsKey("emptyDir"));
+        assertFalse(hasVolumeMount(maven, "maven-settings"));
+        assertFalse(hasVolume("maven-settings"));
+        assertFalse(hasEnvironment(maven, "HTTP_PROXY"));
+        assertFalse(hasEnvironment(maven, "HTTPS_PROXY"));
+        assertFalse(hasEnvironment(maven, "NO_PROXY"));
         assertFalse(source.contains("/root/.m2"));
     }
 
@@ -82,6 +87,9 @@ class JenkinsAgentConfigurationTest {
         assertEquals("Unconfined", map(security.get("appArmorProfile")).get("type"));
         assertEquals(List.of("SETUID", "SETGID"), map(security.get("capabilities")).get("add"));
         assertEquals(List.of("ALL"), map(security.get("capabilities")).get("drop"));
+        assertTrue(hasEnvironment(buildkit, "HTTP_PROXY"));
+        assertTrue(hasEnvironment(buildkit, "HTTPS_PROXY"));
+        assertTrue(hasEnvironment(buildkit, "NO_PROXY"));
         String flags = environment(buildkit, "BUILDKITD_FLAGS");
         assertTrue(flags.contains("${BUILDKITD_FLAGS}"));
         assertTrue(flags.contains("--root ${BUILDKIT_STATE_DIR}"));
@@ -130,6 +138,21 @@ class JenkinsAgentConfigurationTest {
                 .map(mount -> mount.get("mountPath").toString())
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Missing volume mount: " + name));
+    }
+
+    private boolean hasEnvironment(Map<String, Object> container, String name) {
+        return maps(container.get("env")).stream()
+                .anyMatch(entry -> name.equals(entry.get("name")));
+    }
+
+    private boolean hasVolumeMount(Map<String, Object> container, String name) {
+        return maps(container.get("volumeMounts")).stream()
+                .anyMatch(mount -> name.equals(mount.get("name")));
+    }
+
+    private boolean hasVolume(String name) {
+        return maps(map(pod.get("spec")).get("volumes")).stream()
+                .anyMatch(volume -> name.equals(volume.get("name")));
     }
 
     private Map<String, Object> volume(String name) {

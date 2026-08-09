@@ -24,7 +24,6 @@
     "MAVEN_CONFIG": "/home/jenkins/.m2",
     "MAVEN_REPOSITORY": "/home/jenkins/.m2/repository",
     "HELM_USER_HOME": "/home/jenkins",
-    "MAVEN_SETTINGS_CONFIG_MAP": "maven-settings",
     "BUILD_PROXY_CONFIG_MAP": "build-proxy"
   },
   "agent": {
