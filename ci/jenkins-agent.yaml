@@ -8,6 +8,11 @@ spec:
   automountServiceAccountToken: false
   restartPolicy: Never
   securityContext:
+    runAsNonRoot: true
+    runAsUser: ${POD_RUN_AS_USER}
+    runAsGroup: ${POD_RUN_AS_GROUP}
+    fsGroup: ${POD_FS_GROUP}
+    fsGroupChangePolicy: OnRootMismatch
     seccompProfile:
       type: RuntimeDefault
   containers:
@@ -18,8 +23,12 @@ spec:
         - cat
       tty: true
       env:
+        - name: HOME
+          value: ${MAVEN_USER_HOME}
+        - name: MAVEN_CONFIG
+          value: ${MAVEN_CONFIG}
         - name: MAVEN_OPTS
-          value: -Dmaven.repo.local=/root/.m2/repository -XX:MaxRAMPercentage=75.0
+          value: -Duser.home=${MAVEN_USER_HOME} -Dmaven.repo.local=${MAVEN_REPOSITORY} -XX:MaxRAMPercentage=75.0
         - name: HTTP_PROXY
           valueFrom:
             configMapKeyRef:
@@ -43,17 +52,22 @@ spec:
           cpu: "${MAVEN_CPU_LIMIT}"
           memory: "${MAVEN_MEMORY_LIMIT}"
       securityContext:
+        runAsNonRoot: true
+        runAsUser: ${POD_RUN_AS_USER}
+        runAsGroup: ${POD_RUN_AS_GROUP}
         allowPrivilegeEscalation: false
         capabilities:
           drop:
             - ALL
       volumeMounts:
+        - name: maven-home
+          mountPath: ${MAVEN_USER_HOME}
         - name: maven-settings
-          mountPath: /root/.m2/settings.xml
+          mountPath: ${MAVEN_CONFIG}/settings.xml
           subPath: settings.xml
           readOnly: true
         - name: maven-cache
-          mountPath: /root/.m2/repository
+          mountPath: ${MAVEN_REPOSITORY}
 
     - name: buildkit
       image: ${BUILDKIT_IMAGE}
@@ -116,6 +130,8 @@ spec:
         - cat
       tty: true
       env:
+        - name: HOME
+          value: ${HELM_USER_HOME}
         - name: HELM_DRIVER
           value: ${HELM_DRIVER}
       resources:
@@ -126,20 +142,29 @@ spec:
           cpu: "${HELM_CPU_LIMIT}"
           memory: "${HELM_MEMORY_LIMIT}"
       securityContext:
+        runAsNonRoot: true
+        runAsUser: ${POD_RUN_AS_USER}
+        runAsGroup: ${POD_RUN_AS_GROUP}
         allowPrivilegeEscalation: false
         capabilities:
           drop:
             - ALL
       volumeMounts:
+        - name: helm-home
+          mountPath: ${HELM_USER_HOME}
         - name: deploy-api
           mountPath: /var/run/secrets/kubernetes.io/serviceaccount
           readOnly: true
 
   volumes:
+    - name: maven-home
+      emptyDir: {}
     - name: maven-settings
       configMap:
         name: ${MAVEN_SETTINGS_CONFIG_MAP}
     - name: maven-cache
+      emptyDir: {}
+    - name: helm-home
       emptyDir: {}
     - name: buildkit-config
       secret:

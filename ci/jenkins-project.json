@@ -17,6 +17,13 @@
     "KUBE_NAMESPACE": "spring-app",
     "BUILDKIT_REGISTRY_SECRET_NAME": "ghcr-push-config",
     "DEPLOY_SERVICE_ACCOUNT": "jenkins-deployer",
+    "POD_RUN_AS_USER": 1000,
+    "POD_RUN_AS_GROUP": 1000,
+    "POD_FS_GROUP": 1000,
+    "MAVEN_USER_HOME": "/home/jenkins",
+    "MAVEN_CONFIG": "/home/jenkins/.m2",
+    "MAVEN_REPOSITORY": "/home/jenkins/.m2/repository",
+    "HELM_USER_HOME": "/home/jenkins",
     "MAVEN_SETTINGS_CONFIG_MAP": "maven-settings",
     "BUILD_PROXY_CONFIG_MAP": "build-proxy"
   },
