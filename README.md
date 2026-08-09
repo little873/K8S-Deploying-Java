@@ -48,7 +48,7 @@
 
 | 部分 | 技术或版本 |
 | --- | --- |
-| 项目版本 | 1.0.4 |
+| 项目版本 | 1.0.5 |
 | Java | OpenJDK 21 |
 | 应用框架 | Spring Boot 3.5.16 |
 | 构建工具 | Maven |
@@ -63,7 +63,7 @@
 | 镜像构建 | BuildKit Rootless |
 | 镜像仓库 | GitHub Container Registry |
 | Kubernetes 部署 | Helm、Traefik Ingress |
-| Jenkins 共享类库 | `jenkins-json-build@v3.1.3` |
+| Jenkins 共享类库 | `jenkins-json-build@v3.1.4` |
 
 ## 4. 总体架构
 
@@ -340,7 +340,7 @@ Dockerfile 使用标准 OCI source 标签关联 `https://github.com/sunweisheng/
 `Jenkinsfile` 只固定共享类库版本并指定 JSON：
 
 ```groovy
-@Library('jenkins-json-build@v3.1.3') _
+@Library('jenkins-json-build@v3.1.4') _
 
 jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 ```
@@ -358,7 +358,7 @@ jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 项目 JSON 只允许 `main` 分支执行镜像推送和 Helm 部署；Jenkins 页面仍应配置相同的分支过滤，避免创建无用途的功能分支任务。流水线依赖配套部署攻略中已经创建的：
 
 - 仅包含 `main` 分支的 Multibranch Pipeline 分支过滤规则
-- `jenkins-json-build@v3.1.3` 全局共享类库
+- `jenkins-json-build@v3.1.4` 全局共享类库
 - `maven-settings` ConfigMap
 - `build-proxy` ConfigMap
 - `ghcr-push-config` Secret
@@ -367,7 +367,9 @@ jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 
 Jenkins Chart `5.9.49` 启用 `agent.restrictedPssSecurityContext=true` 后，Kubernetes plugin 会给所有容器补充 `runAsNonRoot: true` 等受限安全字段，但不会补充数字 `runAsUser` 和 `runAsGroup`。插件先合并 Pipeline YAML，再自动增加 `jnlp`，最后注入受限安全字段，因此项目不能伪造同名容器，必须由 Pod 级数字身份覆盖自动注入的 `jnlp`。
 
-项目 Agent Pod 通过 `POD_RUN_AS_USER`、`POD_RUN_AS_GROUP` 和 `POD_FS_GROUP` 在 `spec.securityContext` 中设置数字身份，Maven 与 Helm 再显式声明相同身份。`jnlp` 没有容器级 UID 时会继承 Pod 级数字 UID，从而通过 kubelet 的非 root 预校验。Pod `fsGroup` 同时保障 Jenkins 工作区和 `emptyDir` 可写。Maven 的 `MAVEN_USER_HOME`、`MAVEN_CONFIG`、`MAVEN_REPOSITORY` 以及 Helm 的 `HELM_USER_HOME` 均固定到 `/home/jenkins` 下的可写路径，不再依赖 root 用户目录。BuildKit 继续使用独立的 Rootless、`1000:1000`、Unconfined 和 `--oci-worker-no-process-sandbox` 配置。
+项目 Agent Pod 通过 `POD_RUN_AS_USER`、`POD_RUN_AS_GROUP` 和 `POD_FS_GROUP` 在 `spec.securityContext` 中设置数字身份，Maven 与 Helm 再显式声明相同身份。`jnlp` 没有容器级 UID 时会继承 Pod 级数字 UID，从而通过 kubelet 的非 root 预校验。Pod `fsGroup` 同时保障 Jenkins 工作区和 `emptyDir` 可写。Maven 的 `MAVEN_USER_HOME`、`MAVEN_CONFIG`、`MAVEN_REPOSITORY` 以及 Helm 的 `HELM_USER_HOME` 均固定到 `/home/jenkins` 下的可写路径，不再依赖 root 用户目录。
+
+BuildKit 继续使用独立的 Rootless、`1000:1000`、Unconfined 和 `--oci-worker-no-process-sandbox` 配置。RootlessKit 启动时需要镜像内的 `newuidmap/newgidmap` 建立 subordinate UID/GID 映射，因此 BuildKit 容器显式使用 `allowPrivilegeEscalation: true`，并在 `drop: ALL` 后只加回 `SETUID` 和 `SETGID`。否则 Jenkins 的 `restrictedPssSecurityContext` 会让 BuildKit 报 `operation not permitted`。这项例外只属于 BuildKit；Maven、Helm、`jnlp` 和应用容器都不获得相同权限，BuildKit 也没有使用 `privileged: true`、Docker Socket 或 `hostPath`。
 
 安装 Jenkins 时，`jenkins-values.yaml` 仍应为 Chart 自带的默认 PodTemplate 配置相同身份：
 
