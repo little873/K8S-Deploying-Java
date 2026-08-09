@@ -77,8 +77,11 @@ class JenkinsAgentConfigurationTest {
         assertEquals(Boolean.TRUE, security.get("runAsNonRoot"));
         assertEquals("${BUILDKIT_RUN_AS_USER}", security.get("runAsUser"));
         assertEquals("${BUILDKIT_RUN_AS_GROUP}", security.get("runAsGroup"));
+        assertEquals(Boolean.TRUE, security.get("allowPrivilegeEscalation"));
         assertEquals("Unconfined", map(security.get("seccompProfile")).get("type"));
         assertEquals("Unconfined", map(security.get("appArmorProfile")).get("type"));
+        assertEquals(List.of("SETUID", "SETGID"), map(security.get("capabilities")).get("add"));
+        assertEquals(List.of("ALL"), map(security.get("capabilities")).get("drop"));
         String flags = environment(buildkit, "BUILDKITD_FLAGS");
         assertTrue(flags.contains("${BUILDKITD_FLAGS}"));
         assertTrue(flags.contains("--root ${BUILDKIT_STATE_DIR}"));
