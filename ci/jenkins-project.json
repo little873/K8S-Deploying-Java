@@ -39,7 +39,54 @@
         "variable": "BRANCH_NAME",
         "operator": "equals",
         "value": "main"
-      }
+      },
+      "steps": [
+        {
+          "type": "helm",
+          "action": "lint",
+          "executable": "${HELM_EXECUTABLE}",
+          "chart": "${HELM_CHART}",
+          "setValues": {
+            "image.repository": "${IMAGE_REPOSITORY}",
+            "image.digest": "${IMAGE_DIGEST}"
+          }
+        },
+        {
+          "type": "helm",
+          "action": "template",
+          "executable": "${HELM_EXECUTABLE}",
+          "release": "${HELM_RELEASE}",
+          "chart": "${HELM_CHART}",
+          "namespace": "${KUBE_NAMESPACE}",
+          "setValues": {
+            "image.repository": "${IMAGE_REPOSITORY}",
+            "image.digest": "${IMAGE_DIGEST}"
+          }
+        },
+        {
+          "type": "helm",
+          "action": "upgrade",
+          "executable": "${HELM_EXECUTABLE}",
+          "release": "${HELM_RELEASE}",
+          "chart": "${HELM_CHART}",
+          "namespace": "${KUBE_NAMESPACE}",
+          "createNamespace": false,
+          "wait": true,
+          "timeout": "10m",
+          "rollbackOnFailure": true,
+          "setValues": {
+            "image.repository": "${IMAGE_REPOSITORY}",
+            "image.digest": "${IMAGE_DIGEST}"
+          }
+        },
+        {
+          "type": "helm",
+          "action": "status",
+          "executable": "${HELM_EXECUTABLE}",
+          "release": "${HELM_RELEASE}",
+          "namespace": "${KUBE_NAMESPACE}"
+        }
+      ]
     }
   ]
 }

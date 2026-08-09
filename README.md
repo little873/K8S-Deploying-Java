@@ -48,7 +48,7 @@
 
 | 部分 | 技术或版本 |
 | --- | --- |
-| 项目版本 | 1.0.1 |
+| 项目版本 | 1.0.2 |
 | Java | OpenJDK 21 |
 | 应用框架 | Spring Boot 3.5.16 |
 | 构建工具 | Maven |
@@ -333,6 +333,8 @@ docker build -t spring-app:local .
 
 运行容器使用 Eclipse Temurin JRE 21，并以 UID/GID `10001` 运行。Kubernetes 中同时启用只读根文件系统，只有 `/tmp` 使用临时卷。
 
+Dockerfile 使用标准 OCI source 标签关联 `https://github.com/sunweisheng/K8S-Deploying-Java`。BuildKit 首次推送 GHCR Package 后，GitHub 可以根据该标签自动关联源码仓库，不需要人工执行 `Connect repository`。
+
 ## 12. Jenkins 流水线
 
 `Jenkinsfile` 只固定共享类库版本并指定 JSON：
@@ -350,7 +352,7 @@ jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 3. BuildKit Rootless 构建镜像并推送到 `ghcr.io/sunweisheng/spring-app`。
 4. BuildKit 把远程缓存写入 GHCR。
 5. 共享类库从结构化 metadata JSON 中校验 `sha256` 镜像摘要。
-6. Helm 使用该摘要安装或升级 `spring-app` Release。
+6. Helm 使用该摘要执行 Chart lint、模板渲染并安装或升级 `spring-app` Release。
 7. 构建结束后删除临时 Agent Pod。
 
 项目 JSON 只允许 `main` 分支执行镜像推送和 Helm 部署；Jenkins 页面仍应配置相同的分支过滤，避免创建无用途的功能分支任务。流水线依赖配套部署攻略中已经创建的：
@@ -362,6 +364,10 @@ jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 - `ghcr-push-config` Secret
 - `jenkins-deployer` ServiceAccount 和最小部署权限
 - `spring-app` 命名空间
+
+`spring-app` 命名空间由管理员在平台初始化阶段预先创建。项目把 Helm upgrade 的 `createNamespace` 明确设为 `false`，避免最小权限的 `jenkins-deployer` 在首次安装时尝试创建集群级 Namespace；不要为此给部署身份增加 Namespace 创建权限。
+
+Surefire 在启动测试 JVM 时预加载 Mockito Java Agent，并保留 JaCoCo 的覆盖率参数。这项配置避免 JDK 21 在禁止 JVM 动态附加的本机或 CI 环境中因 Byte Buddy 自附加失败而中断测试。
 
 ## 13. Helm 部署
 
@@ -381,10 +387,12 @@ Chart 默认配置：
 
 ```bash
 helm lint deploy/charts/spring-app \
+  --set-string image.repository=ghcr.io/sunweisheng/spring-app \
   --set-string image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 helm template spring-app deploy/charts/spring-app \
   --namespace spring-app \
+  --set-string image.repository=ghcr.io/sunweisheng/spring-app \
   --set-string image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   > /tmp/spring-app-rendered.yaml
 ```
@@ -394,6 +402,7 @@ helm template spring-app deploy/charts/spring-app \
 ```bash
 HELM_DRIVER=configmap helm upgrade --install spring-app deploy/charts/spring-app \
   --namespace spring-app \
+  --set-string image.repository=ghcr.io/sunweisheng/spring-app \
   --set-string image.digest='sha256:替换为真实镜像摘要' \
   --wait \
   --timeout 5m

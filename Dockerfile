@@ -1,5 +1,7 @@
 FROM docker.io/library/eclipse-temurin:21-jre-jammy@sha256:3097cbbebb7d490494a98aed2301f284b38f79eba158eef098c6fc8c8af11c23
 
+LABEL org.opencontainers.image.source="https://github.com/sunweisheng/K8S-Deploying-Java"
+
 WORKDIR /app
 
 RUN groupadd --gid 10001 app \
