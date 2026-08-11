@@ -27,20 +27,48 @@ class PipelineConfigurationTest {
     @Test
     void deploysOnlyToThePrecreatedNamespace() {
         JsonNode steps = stage("deploy").path("steps");
+        JsonNode preparation = steps.get(0);
+        assertEquals("command", preparation.path("type").asText());
+        assertEquals(
+                "${HELM_OVERRIDE_PREPARE_SCRIPT} \"${HELM_OVERRIDE_SOURCE_FILE}\" \"${HELM_OVERRIDE_VALUES_FILE}\"",
+                preparation.path("script").asText()
+        );
+
         List<String> actions = new ArrayList<>();
-        steps.forEach(step -> actions.add(step.path("action").asText()));
+        steps.forEach(step -> {
+            if ("helm".equals(step.path("type").asText())) {
+                actions.add(step.path("action").asText());
+            }
+        });
         assertEquals(List.of("lint", "template", "upgrade", "status"), actions);
 
         assertImageCoordinates(findStep(steps, "lint"));
-        assertIngressCoordinates(findStep(steps, "lint"));
+        assertOptionalValuesFile(findStep(steps, "lint"));
         assertImageCoordinates(findStep(steps, "template"));
-        assertIngressCoordinates(findStep(steps, "template"));
+        assertOptionalValuesFile(findStep(steps, "template"));
         JsonNode upgrade = findStep(steps, "upgrade");
         assertTrue(upgrade.has("createNamespace"));
         assertFalse(upgrade.path("createNamespace").asBoolean());
         assertTrue(upgrade.path("rollbackOnFailure").asBoolean());
         assertImageCoordinates(upgrade);
-        assertIngressCoordinates(upgrade);
+        assertOptionalValuesFile(upgrade);
+
+        JsonNode status = findStep(steps, "status");
+        assertFalse(status.has("valuesFiles"));
+    }
+
+    @Test
+    void keepsEnvironmentSpecificNamesInProjectConfiguration() {
+        JsonNode variables = configuration.path("variables");
+        assertEquals("helm-overrides", variables.path("HELM_OVERRIDE_VOLUME_NAME").asText());
+        assertEquals("deploy-overrides", variables.path("HELM_OVERRIDE_CONFIG_MAP").asText());
+        assertEquals("/etc/helm/deploy-overrides", variables.path("HELM_OVERRIDE_MOUNT_PATH").asText());
+        assertEquals("${HELM_OVERRIDE_MOUNT_PATH}/values.yaml", variables.path("HELM_OVERRIDE_SOURCE_FILE").asText());
+        assertEquals(
+                ".jenkins-json-build/deploy-overrides-values.yaml",
+                variables.path("HELM_OVERRIDE_VALUES_FILE").asText()
+        );
+        assertEquals("ci/prepare-helm-values.sh", variables.path("HELM_OVERRIDE_PREPARE_SCRIPT").asText());
     }
 
     private void assertMainBranchCondition(JsonNode stage) {
@@ -73,9 +101,16 @@ class PipelineConfigurationTest {
         assertEquals("${IMAGE_DIGEST}", step.path("setValues").path("image.digest").asText());
     }
 
-    private void assertIngressCoordinates(JsonNode step) {
-        assertEquals("${DEPLOY_APP_HOST}", step.path("setValues").path("ingress.host").asText());
-        assertEquals("${DEPLOY_TLS_SECRET}", step.path("setValues").path("ingress.tlsSecret").asText());
+    private void assertOptionalValuesFile(JsonNode step) {
+        assertEquals(List.of("${HELM_OVERRIDE_VALUES_FILE}"), toStrings(step.path("valuesFiles")));
+        assertFalse(step.path("setValues").has("ingress.host"));
+        assertFalse(step.path("setValues").has("ingress.tlsSecret"));
+    }
+
+    private List<String> toStrings(JsonNode values) {
+        List<String> result = new ArrayList<>();
+        values.forEach(value -> result.add(value.asText()));
+        return result;
     }
 
     private JsonNode readConfiguration() {

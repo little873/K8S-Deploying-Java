@@ -137,6 +137,9 @@ spec:
       volumeMounts:
         - name: helm-home
           mountPath: ${HELM_USER_HOME}
+        - name: ${HELM_OVERRIDE_VOLUME_NAME}
+          mountPath: ${HELM_OVERRIDE_MOUNT_PATH}
+          readOnly: true
         - name: deploy-api
           mountPath: /var/run/secrets/kubernetes.io/serviceaccount
           readOnly: true
@@ -148,6 +151,10 @@ spec:
       emptyDir: {}
     - name: helm-home
       emptyDir: {}
+    - name: ${HELM_OVERRIDE_VOLUME_NAME}
+      configMap:
+        name: ${HELM_OVERRIDE_CONFIG_MAP}
+        optional: true
     - name: buildkit-config
       secret:
         secretName: ${BUILDKIT_REGISTRY_SECRET_NAME}

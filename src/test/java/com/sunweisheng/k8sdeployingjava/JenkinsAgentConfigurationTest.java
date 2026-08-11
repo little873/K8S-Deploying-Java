@@ -76,6 +76,16 @@ class JenkinsAgentConfigurationTest {
     }
 
     @Test
+    void mountsEnvironmentSpecificHelmValuesFromAnOptionalConfigMap() {
+        Map<String, Object> helm = container("helm");
+        assertEquals("/etc/helm/deploy-overrides", mountPath(helm, "helm-overrides"));
+
+        Map<String, Object> configMap = map(volume("helm-overrides").get("configMap"));
+        assertEquals("deploy-overrides", configMap.get("name"));
+        assertEquals(Boolean.TRUE, configMap.get("optional"));
+    }
+
+    @Test
     void preservesTheRootlessBuildKitContract() {
         Map<String, Object> buildkit = container("buildkit");
         Map<String, Object> security = map(buildkit.get("securityContext"));

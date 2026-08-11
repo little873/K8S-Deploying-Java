@@ -48,7 +48,7 @@
 
 | 部分 | 技术或版本 |
 | --- | --- |
-| 项目版本 | 1.0.7 |
+| 项目版本 | 1.0.8 |
 | Java | OpenJDK 21 |
 | 应用框架 | Spring Boot 3.5.16 |
 | 构建工具 | Maven |
@@ -78,6 +78,7 @@ flowchart TD
     PostgreSQL --> PVC["PostgreSQL PVC / NFS"]
 
     GitHub["GitHub 仓库"] --> Jenkins["Jenkins 临时 Agent Pod"]
+    Overrides["可选环境 Helm values"] --> Jenkins
     Jenkins --> Maven["Maven + JDK 21"]
     Maven --> BuildKit["BuildKit Rootless"]
     BuildKit --> GHCR["GHCR"]
@@ -168,7 +169,8 @@ flowchart TD
 K8S-Deploying-Java/
 ├── ci/
 │   ├── jenkins-agent.yaml        # Maven、BuildKit、Helm 三容器临时 Agent
-│   └── jenkins-project.json      # V3 流水线、镜像和 Helm 参数
+│   ├── jenkins-project.json      # V3 流水线、镜像和 Helm 参数
+│   └── prepare-helm-values.sh    # 准备可选环境 Helm values
 ├── deploy/charts/spring-app/
 │   ├── templates/
 │   │   ├── configmap.yaml        # Spring Profile 和 JVM 运行参数
@@ -352,8 +354,9 @@ jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 3. BuildKit Rootless 构建镜像并推送到 `ghcr.io/sunweisheng/spring-app`。
 4. BuildKit 把远程缓存写入 GHCR。
 5. 共享类库从结构化 metadata JSON 中校验 `sha256` 镜像摘要。
-6. Helm 使用该摘要执行 Chart lint、模板渲染并安装或升级 `spring-app` Release。
-7. 构建结束后删除临时 Agent Pod。
+6. Helm 容器准备环境覆盖 values；没有覆盖配置时生成空 values 文件。
+7. Helm 使用该摘要执行 Chart lint、模板渲染并安装或升级 `spring-app` Release。
+8. 构建结束后删除临时 Agent Pod。
 
 项目 JSON 只允许 `main` 分支执行镜像推送和 Helm 部署；Jenkins 页面仍应配置相同的分支过滤，避免创建无用途的功能分支任务。流水线依赖配套部署攻略中已经创建的：
 
@@ -363,7 +366,7 @@ jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 - `ghcr-push-config` Secret
 - `jenkins-deployer` ServiceAccount 和最小部署权限
 - `spring-app` 命名空间
-- Jenkins Controller 环境变量 `DEPLOY_APP_HOST` 和 `DEPLOY_TLS_SECRET`，分别指定当前环境的应用域名和 TLS Secret
+- 可选的 `ci/deploy-overrides` ConfigMap；不创建时直接使用项目 Chart 默认值
 
 Jenkins Chart `5.9.49` 启用 `agent.restrictedPssSecurityContext=true` 后，Kubernetes plugin 会给所有容器补充 `runAsNonRoot: true` 等受限安全字段，但不会补充数字 `runAsUser` 和 `runAsGroup`。插件先合并 Pipeline YAML，再自动增加 `jnlp`，最后注入受限安全字段，因此项目不能伪造同名容器，必须由 Pod 级数字身份覆盖自动注入的 `jnlp`。
 
@@ -390,7 +393,7 @@ Surefire 在启动测试 JVM 时预加载 Mockito Java Agent，并保留 JaCoCo 
 
 ## 13. Helm 部署
 
-Chart 默认配置用于本地检查；Jenkins 流水线会使用 `DEPLOY_APP_HOST` 和 `DEPLOY_TLS_SECRET` 覆盖当前环境的 Ingress 域名和 TLS Secret：
+Chart 默认配置同时用于本地检查和未提供环境覆盖配置的 Jenkins 部署：
 
 - Release：`spring-app`
 - Namespace：`spring-app`
@@ -401,6 +404,23 @@ Chart 默认配置用于本地检查；Jenkins 流水线会使用 `DEPLOY_APP_HO
 - 数据库 Secret：`app-db`
 - GHCR 拉取 Secret：`ghcr-pull-config`
 - Spring Profile：`k8s`
+
+Helm Agent Pod 会尝试挂载 `ci` 命名空间中的可选 `ConfigMap/deploy-overrides`。ConfigMap 不存在时，`prepare-helm-values.sh` 生成内容为 `{}` 的空 values 文件，Helm 因而保留上面的 Chart 默认值。需要环境差异时，在 ConfigMap 的 `values.yaml` 中写标准 Helm 局部配置；写了哪一项就只覆盖哪一项。例如云环境同时覆盖域名和 TLS Secret：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deploy-overrides
+  namespace: ci
+data:
+  values.yaml: |
+    ingress:
+      host: app.cloud.k8s.lab
+      tlsSecret: k8s-cloud-lab-tls
+```
+
+如果只需要改变域名，可以只保留 `ingress.host`；如果只需要改变 TLS Secret，可以只保留 `ingress.tlsSecret`，二者没有绑定关系。环境 values 在 Chart 默认值之后合并，流水线的镜像仓库和经过校验的镜像摘要再通过 `setValues` 覆盖，因此环境 ConfigMap 不会改变本次构建要部署的镜像。
 
 提交前检查 Chart。镜像摘要由 Jenkins 正式注入，本地检查时使用格式正确的临时摘要：
 
