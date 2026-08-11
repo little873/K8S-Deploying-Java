@@ -24,6 +24,12 @@
     "MAVEN_CONFIG": "/home/jenkins/.m2",
     "MAVEN_REPOSITORY": "/home/jenkins/.m2/repository",
     "HELM_USER_HOME": "/home/jenkins",
+    "HELM_OVERRIDE_VOLUME_NAME": "helm-overrides",
+    "HELM_OVERRIDE_CONFIG_MAP": "deploy-overrides",
+    "HELM_OVERRIDE_MOUNT_PATH": "/etc/helm/deploy-overrides",
+    "HELM_OVERRIDE_SOURCE_FILE": "${HELM_OVERRIDE_MOUNT_PATH}/values.yaml",
+    "HELM_OVERRIDE_VALUES_FILE": ".jenkins-json-build/deploy-overrides-values.yaml",
+    "HELM_OVERRIDE_PREPARE_SCRIPT": "ci/prepare-helm-values.sh",
     "BUILD_PROXY_CONFIG_MAP": "build-proxy"
   },
   "agent": {
@@ -48,15 +54,18 @@
       },
       "steps": [
         {
+          "type": "command",
+          "script": "${HELM_OVERRIDE_PREPARE_SCRIPT} \"${HELM_OVERRIDE_SOURCE_FILE}\" \"${HELM_OVERRIDE_VALUES_FILE}\""
+        },
+        {
           "type": "helm",
           "action": "lint",
           "executable": "${HELM_EXECUTABLE}",
           "chart": "${HELM_CHART}",
+          "valuesFiles": ["${HELM_OVERRIDE_VALUES_FILE}"],
           "setValues": {
             "image.repository": "${IMAGE_REPOSITORY}",
-            "image.digest": "${IMAGE_DIGEST}",
-            "ingress.host": "${DEPLOY_APP_HOST}",
-            "ingress.tlsSecret": "${DEPLOY_TLS_SECRET}"
+            "image.digest": "${IMAGE_DIGEST}"
           }
         },
         {
@@ -66,11 +75,10 @@
           "release": "${HELM_RELEASE}",
           "chart": "${HELM_CHART}",
           "namespace": "${KUBE_NAMESPACE}",
+          "valuesFiles": ["${HELM_OVERRIDE_VALUES_FILE}"],
           "setValues": {
             "image.repository": "${IMAGE_REPOSITORY}",
-            "image.digest": "${IMAGE_DIGEST}",
-            "ingress.host": "${DEPLOY_APP_HOST}",
-            "ingress.tlsSecret": "${DEPLOY_TLS_SECRET}"
+            "image.digest": "${IMAGE_DIGEST}"
           }
         },
         {
@@ -84,11 +92,10 @@
           "wait": true,
           "timeout": "10m",
           "rollbackOnFailure": true,
+          "valuesFiles": ["${HELM_OVERRIDE_VALUES_FILE}"],
           "setValues": {
             "image.repository": "${IMAGE_REPOSITORY}",
-            "image.digest": "${IMAGE_DIGEST}",
-            "ingress.host": "${DEPLOY_APP_HOST}",
-            "ingress.tlsSecret": "${DEPLOY_TLS_SECRET}"
+            "image.digest": "${IMAGE_DIGEST}"
           }
         },
         {
