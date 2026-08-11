@@ -31,6 +31,7 @@ class JenkinsAgentConfigurationTest {
 
         assertRestrictedContainer(container("maven"));
         assertRestrictedContainer(container("helm"));
+        assertRestrictedContainer(container("jnlp"));
     }
 
     @Test
@@ -43,6 +44,8 @@ class JenkinsAgentConfigurationTest {
         assertEquals("/home/jenkins/.m2", variables.path("MAVEN_CONFIG").asText());
         assertEquals("/home/jenkins/.m2/repository", variables.path("MAVEN_REPOSITORY").asText());
         assertEquals("/home/jenkins", variables.path("HELM_USER_HOME").asText());
+        assertTrue(variables.path("JNLP_IMAGE").asText().contains("@sha256:"));
+        assertEquals("/home/jenkins/agent", variables.path("JNLP_WORKING_DIR").asText());
         assertFalse(variables.has("MAVEN_SETTINGS_CONFIG_MAP"));
         assertFalse(source.contains("AGENT_RUN_AS_"));
     }
@@ -106,12 +109,16 @@ class JenkinsAgentConfigurationTest {
     }
 
     @Test
-    void leavesJnlpInjectionToJenkinsKubernetesPlugin() {
+    void routesJnlpSourceCheckoutThroughTheBuildProxy() {
         List<String> names = containers().stream()
                 .map(container -> container.get("name").toString())
                 .toList();
-        assertEquals(List.of("maven", "buildkit", "helm"), names);
-        assertFalse(source.contains("name: jnlp"));
+        assertEquals(List.of("jnlp", "maven", "buildkit", "helm"), names);
+
+        Map<String, Object> jnlp = container("jnlp");
+        assertTrue(jnlp.get("image").toString().contains("@sha256:"));
+        assertEquals("/home/jenkins/agent", jnlp.get("workingDir"));
+        assertEquals("build-proxy", environmentConfigMap(jnlp));
     }
 
     private void assertRestrictedContainer(Map<String, Object> container) {
@@ -153,6 +160,13 @@ class JenkinsAgentConfigurationTest {
     private boolean hasEnvironment(Map<String, Object> container, String name) {
         return maps(container.get("env")).stream()
                 .anyMatch(entry -> name.equals(entry.get("name")));
+    }
+
+    private String environmentConfigMap(Map<String, Object> container) {
+        return maps(container.get("envFrom")).stream()
+                .map(entry -> map(entry.get("configMapRef")).get("name").toString())
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Missing environment ConfigMap"));
     }
 
     private boolean hasVolumeMount(Map<String, Object> container, String name) {
