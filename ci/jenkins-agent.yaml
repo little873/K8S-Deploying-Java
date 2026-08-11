@@ -16,6 +16,22 @@ spec:
     seccompProfile:
       type: RuntimeDefault
   containers:
+    - name: jnlp
+      image: ${JNLP_IMAGE}
+      imagePullPolicy: IfNotPresent
+      workingDir: ${JNLP_WORKING_DIR}
+      envFrom:
+        - configMapRef:
+            name: ${BUILD_PROXY_CONFIG_MAP}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: ${POD_RUN_AS_USER}
+        runAsGroup: ${POD_RUN_AS_GROUP}
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+
     - name: maven
       image: ${MAVEN_IMAGE}
       imagePullPolicy: IfNotPresent
