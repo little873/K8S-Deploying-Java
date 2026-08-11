@@ -25,6 +25,11 @@ class PipelineConfigurationTest {
     }
 
     @Test
+    void allowsSlowRegistryTransfers() {
+        assertEquals(60, stage("image").path("timeoutMinutes").asInt());
+    }
+
+    @Test
     void deploysOnlyToThePrecreatedNamespace() {
         JsonNode steps = stage("deploy").path("steps");
         JsonNode preparation = steps.get(0);
