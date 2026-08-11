@@ -48,7 +48,7 @@
 
 | 部分 | 技术或版本 |
 | --- | --- |
-| 项目版本 | 1.0.6 |
+| 项目版本 | 1.0.7 |
 | Java | OpenJDK 21 |
 | 应用框架 | Spring Boot 3.5.16 |
 | 构建工具 | Maven |
@@ -363,6 +363,7 @@ jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 - `ghcr-push-config` Secret
 - `jenkins-deployer` ServiceAccount 和最小部署权限
 - `spring-app` 命名空间
+- Jenkins Controller 环境变量 `DEPLOY_APP_HOST` 和 `DEPLOY_TLS_SECRET`，分别指定当前环境的应用域名和 TLS Secret
 
 Jenkins Chart `5.9.49` 启用 `agent.restrictedPssSecurityContext=true` 后，Kubernetes plugin 会给所有容器补充 `runAsNonRoot: true` 等受限安全字段，但不会补充数字 `runAsUser` 和 `runAsGroup`。插件先合并 Pipeline YAML，再自动增加 `jnlp`，最后注入受限安全字段，因此项目不能伪造同名容器，必须由 Pod 级数字身份覆盖自动注入的 `jnlp`。
 
@@ -389,7 +390,7 @@ Surefire 在启动测试 JVM 时预加载 Mockito Java Agent，并保留 JaCoCo 
 
 ## 13. Helm 部署
 
-Chart 默认配置：
+Chart 默认配置用于本地检查；Jenkins 流水线会使用 `DEPLOY_APP_HOST` 和 `DEPLOY_TLS_SECRET` 覆盖当前环境的 Ingress 域名和 TLS Secret：
 
 - Release：`spring-app`
 - Namespace：`spring-app`

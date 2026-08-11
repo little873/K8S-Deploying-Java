@@ -13,7 +13,7 @@
 
     <groupId>com.sunweisheng</groupId>
     <artifactId>k8s-deploying-java</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
     <name>K8S Deploying Java</name>
     <description>Spring Boot and PostgreSQL application for Kubernetes deployment demonstrations</description>
 

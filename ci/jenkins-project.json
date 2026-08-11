@@ -54,7 +54,9 @@
           "chart": "${HELM_CHART}",
           "setValues": {
             "image.repository": "${IMAGE_REPOSITORY}",
-            "image.digest": "${IMAGE_DIGEST}"
+            "image.digest": "${IMAGE_DIGEST}",
+            "ingress.host": "${DEPLOY_APP_HOST}",
+            "ingress.tlsSecret": "${DEPLOY_TLS_SECRET}"
           }
         },
         {
@@ -66,7 +68,9 @@
           "namespace": "${KUBE_NAMESPACE}",
           "setValues": {
             "image.repository": "${IMAGE_REPOSITORY}",
-            "image.digest": "${IMAGE_DIGEST}"
+            "image.digest": "${IMAGE_DIGEST}",
+            "ingress.host": "${DEPLOY_APP_HOST}",
+            "ingress.tlsSecret": "${DEPLOY_TLS_SECRET}"
           }
         },
         {
@@ -82,7 +86,9 @@
           "rollbackOnFailure": true,
           "setValues": {
             "image.repository": "${IMAGE_REPOSITORY}",
-            "image.digest": "${IMAGE_DIGEST}"
+            "image.digest": "${IMAGE_DIGEST}",
+            "ingress.host": "${DEPLOY_APP_HOST}",
+            "ingress.tlsSecret": "${DEPLOY_TLS_SECRET}"
           }
         },
         {

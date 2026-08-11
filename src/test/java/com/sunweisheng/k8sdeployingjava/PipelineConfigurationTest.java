@@ -32,12 +32,15 @@ class PipelineConfigurationTest {
         assertEquals(List.of("lint", "template", "upgrade", "status"), actions);
 
         assertImageCoordinates(findStep(steps, "lint"));
+        assertIngressCoordinates(findStep(steps, "lint"));
         assertImageCoordinates(findStep(steps, "template"));
+        assertIngressCoordinates(findStep(steps, "template"));
         JsonNode upgrade = findStep(steps, "upgrade");
         assertTrue(upgrade.has("createNamespace"));
         assertFalse(upgrade.path("createNamespace").asBoolean());
         assertTrue(upgrade.path("rollbackOnFailure").asBoolean());
         assertImageCoordinates(upgrade);
+        assertIngressCoordinates(upgrade);
     }
 
     private void assertMainBranchCondition(JsonNode stage) {
@@ -68,6 +71,11 @@ class PipelineConfigurationTest {
     private void assertImageCoordinates(JsonNode step) {
         assertEquals("${IMAGE_REPOSITORY}", step.path("setValues").path("image.repository").asText());
         assertEquals("${IMAGE_DIGEST}", step.path("setValues").path("image.digest").asText());
+    }
+
+    private void assertIngressCoordinates(JsonNode step) {
+        assertEquals("${DEPLOY_APP_HOST}", step.path("setValues").path("ingress.host").asText());
+        assertEquals("${DEPLOY_TLS_SECRET}", step.path("setValues").path("ingress.tlsSecret").asText());
     }
 
     private JsonNode readConfiguration() {
