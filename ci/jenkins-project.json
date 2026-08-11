@@ -39,6 +39,7 @@
   "stages": [
     {
       "id": "image",
+      "timeoutMinutes": 60,
       "condition": {
         "variable": "BRANCH_NAME",
         "operator": "equals",
