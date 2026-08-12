@@ -63,7 +63,7 @@
 | 镜像构建 | BuildKit Rootless |
 | 镜像仓库 | GitHub Container Registry |
 | Kubernetes 部署 | Helm、Traefik Ingress |
-| Jenkins 共享类库 | `jenkins-json-build@v3.1.4` |
+| Jenkins 共享类库 | `jenkins-json-build@v3.2.0` |
 
 ## 4. 总体架构
 
@@ -342,7 +342,7 @@ Dockerfile 使用标准 OCI source 标签关联 `https://github.com/sunweisheng/
 `Jenkinsfile` 只固定共享类库版本并指定 JSON：
 
 ```groovy
-@Library('jenkins-json-build@v3.1.4') _
+@Library('jenkins-json-build@v3.2.0') _
 
 jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 ```
@@ -361,7 +361,7 @@ jenkinsJsonBuild(configFiles: ['ci/jenkins-project.json'])
 项目 JSON 只允许 `main` 分支执行镜像推送和 Helm 部署；Jenkins 页面仍应配置相同的分支过滤，避免创建无用途的功能分支任务。流水线依赖配套部署攻略中已经创建的：
 
 - 仅包含 `main` 分支的 Multibranch Pipeline 分支过滤规则
-- `jenkins-json-build@v3.1.4` 全局共享类库
+- `jenkins-json-build@v3.2.0` 全局共享类库
 - 仅供 BuildKit 使用的 `build-proxy` ConfigMap；Maven 直接访问 Maven Central，不读取该代理配置
 - `ghcr-push-config` Secret
 - `jenkins-deployer` ServiceAccount 和最小部署权限
