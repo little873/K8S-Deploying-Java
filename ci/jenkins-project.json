@@ -46,7 +46,25 @@
         "variable": "BRANCH_NAME",
         "operator": "equals",
         "value": "main"
-      }
+      },
+      "steps": [
+        {
+          "type": "containerImage",
+          "builder": "buildkit",
+          "executor": "${BUILDKIT_EXECUTOR}",
+          "frontend": "${BUILDKIT_FRONTEND}",
+          "context": ".",
+          "dockerfile": "Dockerfile",
+          "destinations": [
+            "${IMAGE_REPOSITORY}:${BUILD_NUMBER}"
+          ],
+          "cache": true,
+          "cacheFrom": [],
+          "cacheTo": [
+            "type=registry,ref=${BUILDKIT_CACHE_REF},mode=max"
+          ]
+        }
+      ]
     },
     {
       "id": "deploy",
@@ -65,7 +83,9 @@
           "action": "lint",
           "executable": "${HELM_EXECUTABLE}",
           "chart": "${HELM_CHART}",
-          "valuesFiles": ["${HELM_OVERRIDE_VALUES_FILE}"],
+          "valuesFiles": [
+            "${HELM_OVERRIDE_VALUES_FILE}"
+          ],
           "setValues": {
             "image.repository": "${IMAGE_REPOSITORY}",
             "image.digest": "${IMAGE_DIGEST}"
@@ -78,7 +98,9 @@
           "release": "${HELM_RELEASE}",
           "chart": "${HELM_CHART}",
           "namespace": "${KUBE_NAMESPACE}",
-          "valuesFiles": ["${HELM_OVERRIDE_VALUES_FILE}"],
+          "valuesFiles": [
+            "${HELM_OVERRIDE_VALUES_FILE}"
+          ],
           "setValues": {
             "image.repository": "${IMAGE_REPOSITORY}",
             "image.digest": "${IMAGE_DIGEST}"
@@ -95,7 +117,9 @@
           "wait": true,
           "timeout": "10m",
           "rollbackOnFailure": true,
-          "valuesFiles": ["${HELM_OVERRIDE_VALUES_FILE}"],
+          "valuesFiles": [
+            "${HELM_OVERRIDE_VALUES_FILE}"
+          ],
           "setValues": {
             "image.repository": "${IMAGE_REPOSITORY}",
             "image.digest": "${IMAGE_DIGEST}"
